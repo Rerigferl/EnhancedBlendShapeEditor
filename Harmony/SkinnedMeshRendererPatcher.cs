@@ -113,6 +113,8 @@ namespace Numeira
             if (optionsHasChanged || @this.PreviousSharedMesh != mesh)
             {
                 @this.CategorizedBlendShapes = GetCategorizedBlendShapes(mesh, @this, m_BlendShapeWeights).Select(x => (x.Key, x.ToArray())).ToArray();
+                foreach (var x in @this.FolderStatus.Values)
+                    x.ScrollPosition = Vector2.zero;
             }
             @this.PreviousSharedMesh = mesh;
 
@@ -135,14 +137,14 @@ namespace Numeira
 
             foreach (var category in @this.CategorizedBlendShapes)
             {
-                var (isOpen, scrollPosition) = @this.FolderStatus.GetOrAdd(category.Key, _ => (false, Vector2.zero));
+                var (isOpen, scrollPosition) = @this.FolderStatus.GetOrAdd(category.Key, _ => new FolderStatus());
                 Indent indent = default;
-                if (@this.CategorizedBlendShapes.Length != 1)
+                if (@this.CategorizedBlendShapes.Length != 1 || !string.IsNullOrEmpty(category.Key))
                 {
                     var _isOpen = EditorGUILayout.Foldout(isOpen, string.IsNullOrEmpty(category.Key) ? "Uncategorized" : category.Key);
                     if (_isOpen != isOpen)
                     {
-                        @this.FolderStatus[category.Key] = (_isOpen, scrollPosition);
+                        @this.FolderStatus[category.Key].IsExpanded = _isOpen;;
                         isOpen = _isOpen;
                     }
 
@@ -191,7 +193,7 @@ namespace Numeira
                 if (category.Array.Length > displayCount)
                 {
                     EditorGUILayout.EndScrollView();
-                    @this.FolderStatus[category.Key] = (isOpen, scrollPosition);
+                    @this.FolderStatus[category.Key].ScrollPosition = scrollPosition;
                 }
 
                 indent.Dispose();

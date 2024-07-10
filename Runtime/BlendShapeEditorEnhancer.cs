@@ -48,7 +48,7 @@ namespace Numeira
         [NonSerialized]
         internal (string Key, BlendShapeData[] Array)[] CategorizedBlendShapes;
         [NonSerialized]
-        internal Dictionary<string, (bool IsExpanded, Vector2 ScrollPosition)> FolderStatus = new();
+        internal Dictionary<string, FolderStatus> FolderStatus = new();
         [NonSerialized]
         internal Mesh PreviousSharedMesh;
 #endif
@@ -59,5 +59,15 @@ namespace Numeira
         public int Index;
         public string Name;
         public (float Min, float Max) Weights;
+    }
+
+    internal class FolderStatus
+    {
+        public bool IsExpanded;
+        public Vector2 ScrollPosition;
+
+        public static implicit operator FolderStatus(ValueTuple<bool, Vector2> tuple) => new() { IsExpanded = tuple.Item1, ScrollPosition = tuple.Item2 };
+
+        public void Deconstruct(out bool isExpanded, out Vector2 scrollPosition) => (isExpanded, scrollPosition) = (IsExpanded, ScrollPosition);
     }
 }
