@@ -1,5 +1,5 @@
 {
-    "name": "numeira.improve-blendshape-list.harmony",
+    "name": "numeira.enhanced-blendshape-editor.harmony",
     "rootNamespace": "Numeira",
     "references": [
         "GUID:bbed3083ece933e4d856204e4a53d195"

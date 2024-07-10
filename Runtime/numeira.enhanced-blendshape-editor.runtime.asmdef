@@ -1,5 +1,5 @@
 {
-    "name": "numeira.improve-blendshape-list.runtime",
+    "name": "numeira.enhanced-blendshape-editor.runtime",
     "rootNamespace": "Numeira",
     "references": [
         "VRC.SDKBase"

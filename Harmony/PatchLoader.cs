@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using UnityEditor;
+using UnityEngine;
 
 namespace Numeira
 {
@@ -8,9 +9,10 @@ namespace Numeira
     {
         static PatchLoader()
         {
-            var harmony = new Harmony("numeira.improve-blendshape-list");
+            var harmony = new Harmony("numeira.enhanced-blendshape-editor");
 
             SkinnedMeshRendererEditorPatcher.Patch(harmony);
+            
         }
     }
 }

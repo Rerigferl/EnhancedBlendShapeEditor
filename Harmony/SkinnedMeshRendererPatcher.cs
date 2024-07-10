@@ -39,59 +39,42 @@ namespace Numeira
                 finalizer: patchType is HarmonyPatchType.Finalizer ? patch : null);
         }
 
-        private static Editor currentEditor;
-        private static SerializedObject extendData;
-        private static SerializedProperty faceBlendShapeDelimiterProperty;
-        private static SerializedProperty searchProperty;
-        private static SerializedProperty displayCountProperty;
-        private static SerializedProperty showNonZeroValueProperty;
-        private static Vector2 scrollPosition;
-
-        private static (string Key, BlendShapeData[] Array)[] categorizedBlendShapes;
-        private static (string Key, BlendShapeData[] Array)[] searchedCategorizedBlendshapes;
-        private static Dictionary<string, (bool IsExpanded, Vector2 ScrollPosition)> folderStatus = new();
-
-        public static void OnEnable(Editor __instance)
+        public static void OnEnable(Editor __instance, SerializedProperty ___m_BlendShapeWeights)
         {
             var target = __instance.target as SkinnedMeshRenderer;
-            //if (target.name is not FaceObjectName)
-            //    return;
-
-            if (!target.TryGetComponent<ExtendDataHolder>(out var extendDataHolder))
-            {
-                //extendDataHolder = target.gameObject.AddComponent<ExtendDataHolder>();
-                //extendDataHolder.hideFlags = HideFlags.HideInInspector;
+            if (!target.TryGetComponent<BlendShapeEditorEnhancer>(out var @this))
                 return;
-            }
-            currentEditor = __instance;
-            extendData = new(extendDataHolder);
-            faceBlendShapeDelimiterProperty = extendData.FindProperty(nameof(ExtendDataHolder.FaceBlendShapeDelimiter));
-            searchProperty = extendData.FindProperty(nameof(ExtendDataHolder.Search));
-            displayCountProperty = extendData.FindProperty(nameof(ExtendDataHolder.DisplayCount));
-            showNonZeroValueProperty = extendData.FindProperty(nameof(ExtendDataHolder.ShowNonZeroValueOnly));
-            scrollPosition = Vector2.zero;
-            categorizedBlendShapes = GetCategorizedBlendShapes(target.sharedMesh, faceBlendShapeDelimiterProperty.stringValue, searchProperty.stringValue).Select(x => (x.Key, x.ToArray())).ToArray();
-            folderStatus.Clear();
+
+            var so = @this.SerializedObject = new(@this);
+            @this.FaceBlendShapeDelimiterProperty = so.FindProperty(nameof(BlendShapeEditorEnhancer.FaceBlendShapeDelimiter));
+            @this.SearchProperty = so.FindProperty(nameof(BlendShapeEditorEnhancer.Search));
+            @this.DisplayCountProperty = so.FindProperty(nameof(BlendShapeEditorEnhancer.DisplayCount));
+            @this.ShowNonZeroValueOnlyProperty = so.FindProperty(nameof(BlendShapeEditorEnhancer.ShowNonZeroValueOnly));
+            @this.CategorizedBlendShapes = GetCategorizedBlendShapes(target.sharedMesh, @this, ___m_BlendShapeWeights).Select(x => (x.Key, x.ToArray())).ToArray();
+            if (@this.CategorizedBlendShapes.Length == 1 && !string.IsNullOrEmpty(@this.FaceBlendShapeDelimiter))
+                @this.FaceBlendShapeDelimiter = "";
+            @this.FolderStatus.Clear();
         }
 
-        public static bool OnBlendShapeUI(Editor __instance, ref SerializedProperty ___m_BlendShapeWeights)
+        public static bool OnBlendShapeUI(Editor __instance, SerializedProperty ___m_BlendShapeWeights)
         {
-            //if (__instance.targets.Length != 1 || __instance.target.name is not FaceObjectName)
-            if ((__instance.target as SkinnedMeshRenderer)?.TryGetComponent<ExtendDataHolder>(out var e) != true || e.DisableAlternativeEditor)
+            if (__instance.targets.Length != 1 
+                || (__instance.target as SkinnedMeshRenderer)?.TryGetComponent<BlendShapeEditorEnhancer>(out var e) != true 
+                || e.DisableAlternativeEditor)
                 return true; // Do nothing
 
-            if (currentEditor != __instance)
-                OnEnable(__instance);
+            if (e.SerializedObject == null)
+                OnEnable(__instance, ___m_BlendShapeWeights);
 
-            OnBlendShapeGUIInternal(__instance, ___m_BlendShapeWeights);
+            OnBlendShapeGUIInternal(e, __instance, ___m_BlendShapeWeights);
 
             return false; // Prevent original method
         }
 
-        private static void OnBlendShapeGUIInternal(Editor @this, SerializedProperty m_BlendShapeWeights)
+        private static void OnBlendShapeGUIInternal(BlendShapeEditorEnhancer @this, Editor instance, SerializedProperty m_BlendShapeWeights)
         {
-            var so = @this.serializedObject;
-            var smr = @this.target as SkinnedMeshRenderer;
+            var so = instance.serializedObject;
+            var smr = instance.target as SkinnedMeshRenderer;
             var mesh = smr.sharedMesh;
             var blendShapeCount = mesh.blendShapeCount;
 
@@ -104,32 +87,33 @@ namespace Numeira
 
             using var __indent = Indent.Increment();
 
-            extendData.Update();
+            @this.SerializedObject.Update();
 
             bool optionsHasChanged = false;
-            if (faceBlendShapeDelimiterProperty.isExpanded = EditorGUILayout.Foldout(faceBlendShapeDelimiterProperty.isExpanded, "Options"))
+            if (@this.FaceBlendShapeDelimiterProperty.isExpanded = EditorGUILayout.Foldout(@this.FaceBlendShapeDelimiterProperty.isExpanded, "Options"))
             {
                 using var __indent_ = Indent.Increment();
-                EditorGUILayout.PropertyField(displayCountProperty);
-                EditorGUILayout.PropertyField(showNonZeroValueProperty);
+                EditorGUILayout.PropertyField(@this.DisplayCountProperty);
                 EditorGUI.BeginChangeCheck();
-                EditorGUILayout.PropertyField(faceBlendShapeDelimiterProperty, "Delimiter".ToGUIContent());
+                EditorGUILayout.PropertyField(@this.ShowNonZeroValueOnlyProperty);
+                EditorGUILayout.PropertyField(@this.FaceBlendShapeDelimiterProperty, "Delimiter".ToGUIContent());
                 optionsHasChanged |= EditorGUI.EndChangeCheck();
             }
 
             EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(searchProperty);
+            EditorGUILayout.PropertyField(@this.SearchProperty);
             optionsHasChanged |= EditorGUI.EndChangeCheck();
+
+            @this.SerializedObject.ApplyModifiedPropertiesWithoutUndo();
             if (optionsHasChanged)
             {
-                categorizedBlendShapes = GetCategorizedBlendShapes(mesh, faceBlendShapeDelimiterProperty.stringValue, searchProperty.stringValue).Select(x => (x.Key, x.ToArray())).ToArray();
+                @this.CategorizedBlendShapes = GetCategorizedBlendShapes(mesh, @this, m_BlendShapeWeights).Select(x => (x.Key, x.ToArray())).ToArray();
             }
 
-            extendData.ApplyModifiedProperties();
 
             GUIExt.DrawSeparator();
 
-            if (categorizedBlendShapes.Length == 0)
+            if (@this.CategorizedBlendShapes.Length == 0)
             {
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Blendshapes not found!");
@@ -138,22 +122,22 @@ namespace Numeira
                 return;
             }
 
-            int displayCount = displayCountProperty.intValue;
-            var delimiter = faceBlendShapeDelimiterProperty.stringValue;
+            int displayCount = @this.DisplayCount;
+            var delimiter = @this.FaceBlendShapeDelimiter;
             const float LineHeight = 20;
             int arraySize = m_BlendShapeWeights.arraySize;
-            bool nonZeroValueOnly = showNonZeroValueProperty.boolValue;
+            bool nonZeroValueOnly = @this.ShowNonZeroValueOnly;
 
-            foreach (var c in categorizedBlendShapes)
+            foreach (var category in @this.CategorizedBlendShapes)
             {
-                var (isOpen, scrollPosition) = folderStatus.GetOrAdd(c.Key, _ => (false, Vector2.zero));
+                var (isOpen, scrollPosition) = @this.FolderStatus.GetOrAdd(category.Key, _ => (false, Vector2.zero));
                 Indent indent = default;
-                if (categorizedBlendShapes.Length != 1 || categorizedBlendShapes[0].Key != "")
+                if (@this.CategorizedBlendShapes.Length != 1 || @this.CategorizedBlendShapes[0].Key != "")
                 {
-                    var _isOpen = EditorGUILayout.Foldout(isOpen, string.IsNullOrEmpty(c.Key) ? "Uncategorized" : c.Key);
+                    var _isOpen = EditorGUILayout.Foldout(isOpen, string.IsNullOrEmpty(category.Key) ? "Uncategorized" : category.Key);
                     if (_isOpen != isOpen)
                     {
-                        folderStatus[c.Key] = (_isOpen, scrollPosition);
+                        @this.FolderStatus[category.Key] = (_isOpen, scrollPosition);
                         isOpen = _isOpen;
                     }
 
@@ -163,25 +147,25 @@ namespace Numeira
                     indent = Indent.Increment();
                 }
 
-                scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition, GUILayout.Height(LineHeight * Math.Min(displayCount, c.Array.Length)));
-                scrollPosition = new Vector2(0, Mathf.Ceil(scrollPosition.y / LineHeight) * LineHeight);
+                if (category.Array.Length > displayCount)
+                {
+                    scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition, GUILayout.Height(LineHeight * Math.Min(displayCount, category.Array.Length)));
+                    scrollPosition = new Vector2(0, Mathf.Round(scrollPosition.y / LineHeight) * LineHeight);
+                }
 
                 var start = Mathf.RoundToInt(scrollPosition.y / LineHeight) - 1;
                 var end = start + displayCount + 2;
 
-                int displayed = 0;
-
-                foreach (var data in c.Array)
+                for (int i = 0; i < category.Array.Length; i++)
                 {
-                    if ((uint)(displayed - start) > (end - start))
+                    var data = category.Array[i];
+                    if ((uint)(i - start) > (end - start))
                     {
                         EditorGUILayout.Space(LineHeight);
-                        displayed++;
                         continue;
                     }
 
                     var name = data.Name;
-                    var weight = m_BlendShapeWeights.GetArrayElementAtIndex(data.Index);
                     if (data.Index < arraySize)
                     {
                         EditorGUILayout.Slider(m_BlendShapeWeights.GetArrayElementAtIndex(data.Index), data.Weights.Min, data.Weights.Max, name.ToGUIContent());
@@ -189,7 +173,6 @@ namespace Numeira
                     else
                     {
                         EditorGUI.BeginChangeCheck();
-
                         float value = EditorGUILayout.Slider(name.ToGUIContent(), 0f, data.Weights.Min, data.Weights.Max);
                         if (EditorGUI.EndChangeCheck())
                         {
@@ -198,64 +181,70 @@ namespace Numeira
                             m_BlendShapeWeights.GetArrayElementAtIndex(data.Index).floatValue = value;
                         }
                     }
-                    displayed++;
                 }
-                EditorGUILayout.EndScrollView();
+
+                if (category.Array.Length > displayCount)
+                {
+                    EditorGUILayout.EndScrollView();
+                    @this.FolderStatus[category.Key] = (isOpen, scrollPosition);
+                }
+
                 indent.Dispose();
-                folderStatus[c.Key] = (isOpen, scrollPosition);
             }
 
             GUIExt.DrawSeparator();
 
         }
 
-        private static IEnumerable<IGrouping<string, BlendShapeData>> GetCategorizedBlendShapes(Mesh mesh, string delimiter, string search = null)
+        private static IEnumerable<IGrouping<string, BlendShapeData>> GetCategorizedBlendShapes(Mesh mesh, BlendShapeEditorEnhancer @this, SerializedProperty blendShapeWeights)
         {
-            Regex regex;
+            Regex search;
+            Regex delimiter;
             try
             {
-                regex = string.IsNullOrEmpty(search) ? null : new Regex(search, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+                search = string.IsNullOrEmpty(@this.Search) ? null : new Regex(@this.Search, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
             }
             catch
             {
-                regex = null;
+                search = null;
             }
-            if (string.IsNullOrEmpty(delimiter))
+            try
             {
-                var a = Enumerable.Range(0, mesh.blendShapeCount).Select(i =>
-                {
-                    return new BlendShapeData()
-                    {
-                        Index = i,
-                        Name = mesh.GetBlendShapeName(i),
-                        Weights = GetBlendShapeWeights(i),
-                    };
-                });
-                if (regex is not null)
-                {
-                    a = a.Where(x => regex.IsMatch(x.Name));
-                }
-                return a.GroupBy(x => "");
+                delimiter = string.IsNullOrEmpty(@this.FaceBlendShapeDelimiter) ? null : new Regex(@this.FaceBlendShapeDelimiter, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+            }
+            catch
+            {
+                delimiter = null;
             }
 
             return WithGroup().GroupBy(x => x.Item1, x => x.Item2);
 
             IEnumerable<(string, BlendShapeData)> WithGroup()
             {
-                var current = "Uncategorized";
+                var current = delimiter is null ? "" : "Uncategorized";
                 int count = mesh.blendShapeCount;
+                var weightCount = blendShapeWeights?.arraySize ?? 0;
 
                 for (int i = 0; i < count; i++)
                 {
                     var name = mesh.GetBlendShapeName(i);
 
-                    if (name.Contains(delimiter, StringComparison.OrdinalIgnoreCase))
+                    //if (name.Contains(@this.FaceBlendShapeDelimiter, StringComparison.OrdinalIgnoreCase))
+                    if (delimiter?.IsMatch(name) ?? false)
                     {
-                        current = name.Replace(delimiter, "");
+                        current = delimiter.Replace(name, "");
+                        //current = name.Replace(@this.FaceBlendShapeDelimiter, "");
                         continue;
                     }
 
-                    if (regex is not null && !regex.IsMatch(name))
+                    if (@this.ShowNonZeroValueOnly)
+                    {
+                        var weight = i >= weightCount ? 0 : blendShapeWeights.GetArrayElementAtIndex(i)?.floatValue ?? 0;
+                        if (weight == 0)
+                            continue;
+                    }
+
+                    if (search is not null && !search.IsMatch(name))
                         continue;
 
                     yield return (current, new()
@@ -283,23 +272,19 @@ namespace Numeira
             }
         }
 
-        private struct BlendShapeData
-        {
-            public int Index;
-            public string Name;
-            public (float Min, float Max) Weights;
-        }
-
         private const string MenuPath = "CONTEXT/SkinnedMeshRenderer/Toggle blendshape editor mode";
 
-        [MenuItem(MenuPath, false, 301)]
+        [MenuItem(MenuPath, priority = 301)]
         public static void ToggleEditorMode(MenuCommand command)
         {
-            var extendData = (command.context as SkinnedMeshRenderer).GetComponent<ExtendDataHolder>();
-            extendData.DisableAlternativeEditor = !extendData.DisableAlternativeEditor;
-        }
+            var context = command.context as SkinnedMeshRenderer;
+            if (!context.TryGetComponent<BlendShapeEditorEnhancer>(out var c))
+            {
+                context.gameObject.AddComponent<BlendShapeEditorEnhancer>();
+                return;
+            }
 
-        [MenuItem(MenuPath, true, 301)]
-        public static bool ToggleEditorModeValidator(MenuCommand command) => (command.context is SkinnedMeshRenderer smr) && smr.TryGetComponent<ExtendDataHolder>(out _);
+            c.DisableAlternativeEditor = !c.DisableAlternativeEditor;
+        }
     }
 }
