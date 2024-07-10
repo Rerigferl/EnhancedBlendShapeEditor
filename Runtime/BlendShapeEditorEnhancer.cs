@@ -18,6 +18,8 @@ namespace Numeira
 #endif
     {
         [HideInInspector]
+        public bool Initialized = false;
+        [HideInInspector]
         public string FaceBlendShapeDelimiter = "[-=]{2,}";
         [HideInInspector]
         [Range(16, 64)]
@@ -47,6 +49,8 @@ namespace Numeira
         internal (string Key, BlendShapeData[] Array)[] CategorizedBlendShapes;
         [NonSerialized]
         internal Dictionary<string, (bool IsExpanded, Vector2 ScrollPosition)> FolderStatus = new();
+        [NonSerialized]
+        internal Mesh PreviousSharedMesh;
 #endif
     }
 

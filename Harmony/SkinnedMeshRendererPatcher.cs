@@ -8,6 +8,7 @@ using HarmonyLib;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using static UnityEngine.GraphicsBuffer;
 
 namespace Numeira
 {
@@ -26,12 +27,15 @@ namespace Numeira
         }
 
         private static void PatchMethod(string methodName, Type type, Harmony harmony, HarmonyPatchType patchType = HarmonyPatchType.Prefix)
+            => PatchMethod(methodName, methodName, type, harmony, patchType);
+
+        private static void PatchMethod(string originalMethodName, string targetMethodName, Type type, Harmony harmony, HarmonyPatchType patchType = HarmonyPatchType.Prefix)
         {
-            var original = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance);
+            var original = type.GetMethod(originalMethodName, BindingFlags.Public | BindingFlags.Instance);
             if (original is null)
                 return;
 
-            var patch = new HarmonyMethod(typeof(SkinnedMeshRendererEditorPatcher).GetMethod(methodName, BindingFlags.Public | BindingFlags.Static));
+            var patch = new HarmonyMethod(typeof(SkinnedMeshRendererEditorPatcher).GetMethod(targetMethodName, BindingFlags.Public | BindingFlags.Static));
             harmony.Patch(original,
                 prefix: patchType is HarmonyPatchType.Prefix ? patch : null,
                 postfix: patchType is HarmonyPatchType.Postfix ? patch : null,
@@ -51,9 +55,10 @@ namespace Numeira
             @this.DisplayCountProperty = so.FindProperty(nameof(BlendShapeEditorEnhancer.DisplayCount));
             @this.ShowNonZeroValueOnlyProperty = so.FindProperty(nameof(BlendShapeEditorEnhancer.ShowNonZeroValueOnly));
             @this.CategorizedBlendShapes = GetCategorizedBlendShapes(target.sharedMesh, @this, ___m_BlendShapeWeights).Select(x => (x.Key, x.ToArray())).ToArray();
-            if (@this.CategorizedBlendShapes.Length == 1 && !string.IsNullOrEmpty(@this.FaceBlendShapeDelimiter))
+            if (!@this.Initialized && @this.CategorizedBlendShapes.Length == 1 && !string.IsNullOrEmpty(@this.FaceBlendShapeDelimiter))
                 @this.FaceBlendShapeDelimiter = "";
             @this.FolderStatus.Clear();
+            @this.Initialized = true;
         }
 
         public static bool OnBlendShapeUI(Editor __instance, SerializedProperty ___m_BlendShapeWeights)
@@ -105,11 +110,11 @@ namespace Numeira
             optionsHasChanged |= EditorGUI.EndChangeCheck();
 
             @this.SerializedObject.ApplyModifiedPropertiesWithoutUndo();
-            if (optionsHasChanged)
+            if (optionsHasChanged || @this.PreviousSharedMesh != mesh)
             {
                 @this.CategorizedBlendShapes = GetCategorizedBlendShapes(mesh, @this, m_BlendShapeWeights).Select(x => (x.Key, x.ToArray())).ToArray();
             }
-
+            @this.PreviousSharedMesh = mesh;
 
             GUIExt.DrawSeparator();
 
@@ -132,7 +137,7 @@ namespace Numeira
             {
                 var (isOpen, scrollPosition) = @this.FolderStatus.GetOrAdd(category.Key, _ => (false, Vector2.zero));
                 Indent indent = default;
-                if (@this.CategorizedBlendShapes.Length != 1 || @this.CategorizedBlendShapes[0].Key != "")
+                if (@this.CategorizedBlendShapes.Length != 1)
                 {
                     var _isOpen = EditorGUILayout.Foldout(isOpen, string.IsNullOrEmpty(category.Key) ? "Uncategorized" : category.Key);
                     if (_isOpen != isOpen)
@@ -221,7 +226,7 @@ namespace Numeira
 
             IEnumerable<(string, BlendShapeData)> WithGroup()
             {
-                var current = delimiter is null ? "" : "Uncategorized";
+                var current = "";
                 int count = mesh.blendShapeCount;
                 var weightCount = blendShapeWeights?.arraySize ?? 0;
 
