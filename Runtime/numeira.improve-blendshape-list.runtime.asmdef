@@ -1,0 +1,22 @@
+{
+    "name": "numeira.improve-blendshape-list.runtime",
+    "rootNamespace": "Numeira",
+    "references": [
+        "VRC.SDKBase"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.base",
+            "expression": "",
+            "define": "VRC_SDK_BASE"
+        }
+    ],
+    "noEngineReferences": false
+}

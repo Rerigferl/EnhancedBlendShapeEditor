@@ -1,0 +1,20 @@
+{
+    "name": "numeira.improve-blendshape-list.harmony",
+    "rootNamespace": "Numeira",
+    "references": [
+        "GUID:bbed3083ece933e4d856204e4a53d195"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "0Harmony.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
