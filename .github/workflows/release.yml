@@ -75,12 +75,5 @@ jobs:
             ${{env.zipFile}}
             ${{env.unityPackage}}
             Packages/${{env.packageName}}/package.json
-
-      - name: Update Repository
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          repository: Rerigferl/vpm
-          event-type: build-listing
           
          
