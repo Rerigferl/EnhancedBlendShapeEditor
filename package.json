@@ -1,0 +1,11 @@
+{
+    "name": "numeira.enhanced-blendshape-editor",
+    "displayName": "Enhanced BlendShape Editor",
+    "version": "1.0.0",
+    "unity": "2022.3",
+    "description": "Enhanced BlendShape Editor",
+    "author": "Numeira",
+    "url": "https://github.com/Rerigferl/EnhancedBlendShapeEditor",
+    "repo": "https://rerigferl.github.io/vpm/vpm.json",
+    "dependencies": {}
+  }
